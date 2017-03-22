@@ -1,0 +1,21 @@
+env/private.env
+pure-ftp-structure/EDC_QReceipts/*
+pure-ftp-structure/EDC_QImages/Images/*
+pure-ftp-structure/EDC_QImages/Index/*
+pure-ftp-structure/EDC_QData/*
+*.swp
+
+# Python virtualenv
+.DS_Store
+tests/__pycache__/
+__pycache__
+logs/
+*.pyc
+.Python
+bin/
+lib/
+include/
+pip-selfcheck.json
+venv/
+.idea/
+
