@@ -77,5 +77,17 @@ class TestRabbitHealthcheck(unittest.TestCase):
             self.assertEqual(cm.exception.code, 0)
 
 
+class TestSelfHealthcheck(unittest.TestCase):
+
+    def setUp(self):
+        self.rm = RabbitMonitor()
+
+    def test_healthcheck_endpoint(self):
+        self.rm.healthcheck()
+
+        status = self.rm.healthcheck()
+        self.assertEqual(200, status)
+
+
 if __name__ == '__main__':
     unittest.main()
