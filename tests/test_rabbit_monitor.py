@@ -4,14 +4,14 @@ import unittest
 
 import responses
 
+import rabbit_monitor
 from rabbit_monitor import RabbitMonitor
 import settings
 
 
 class TestRabbitHealthcheck(unittest.TestCase):
 
-    def setUp(self):
-        self.rm = RabbitMonitor()
+    rm = RabbitMonitor()
 
     def test_process_healthcheck(self):
         url = settings.URLS['healthcheck']
@@ -76,17 +76,8 @@ class TestRabbitHealthcheck(unittest.TestCase):
             self.rm.shutdown()
             self.assertEqual(cm.exception.code, 0)
 
-
-class TestSelfHealthcheck(unittest.TestCase):
-
-    def setUp(self):
-        self.rm = RabbitMonitor()
-
-    def test_healthcheck_endpoint(self):
-        self.rm.healthcheck()
-
-        status = self.rm.healthcheck()
-        self.assertEqual(200, status)
+    def test_healthcheck_endpoint_method(self):
+        self.assertEqual('{"status": "ok"}', rabbit_monitor.healthcheck())
 
 
 if __name__ == '__main__':
