@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 #   coding: UTF-8
+from json import dumps
 import logging
+from multiprocessing import Process
+import os
 import sys
 from time import sleep
 
+from bottle import Bottle, response, run
 import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 from structlog import wrap_logger
 
 import settings
@@ -31,6 +33,27 @@ class RabbitMonitor():
         self.session.auth = (settings.RABBITMQ_DEFAULT_USER,
                              settings.RABBITMQ_DEFAULT_PASS)
 
+    def start(self):
+        logger.info("Starting sdx-rabbit-monitor", version=__version__)
+
+        try:
+            while True:
+                self.call_healthcheck()
+                self.call_aliveness()
+                sleep(self.WAIT_TIME)
+        except KeyboardInterrupt:
+            self.shutdown()
+
+    def shutdown(self, signal=None, frame=None):
+        logger.info("Shutting down sdx-rabbit-monitor")
+        try:
+            self._p.shutdown()
+        except AttributeError:
+            # Process not started
+            pass
+
+        sys.exit()
+
     def call_healthcheck(self):
         logger.info('Getting rabbit healthcheck status')
         healthcheck = self.session.get(settings.URLS['healthcheck'],
@@ -53,26 +76,29 @@ class RabbitMonitor():
         else:
             logger.error('Rabbit aliveness bad', status=r.status_code)
 
-    def shutdown(self):
-        logger.info("Shutting down")
-        sys.exit()
 
-    def run(self):
-        logger.info("Starting rabbit monitor", version=__version__)
+app = Bottle()
 
-        retries = Retry(total=5, backoff_factor=0.1)
-        self.session.mount('http://', HTTPAdapter(max_retries=retries))
 
-        while True:
-            self.call_healthcheck()
-            self.call_aliveness()
-            sleep(self.WAIT_TIME)
+@app.route('/healthcheck')
+def healthcheck():
+    logger.info('sdx-rabbit-monitor self healthcheck', status=200)
+    response.content_type = 'application/json'
+    return dumps({'status': 'ok'})
+
+
+def main():
+    port = int(os.getenv("port", 5000))
+    p = Process(target=run, args=(app,), kwargs={'port': port})
+    p.start()
+    try:
+        rm = RabbitMonitor()
+        rm.start()
+    except KeyboardInterrupt:
+        p.terminate()
+        p.join()
+        rm.shutdown()
 
 
 if __name__ == "__main__":
-    try:
-        logger.info("Starting rabbit monitor", version=__version__)
-        rabbit_monitor = RabbitMonitor()
-        rabbit_monitor.run()
-    except KeyboardInterrupt:
-        rabbit_monitor.shutdown()
+    main()
