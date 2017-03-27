@@ -5,7 +5,6 @@ import unittest
 import responses
 
 from rabbit_monitor import RabbitMonitor
-import settings
 
 
 class TestRabbitHealthcheck(unittest.TestCase):
@@ -14,11 +13,10 @@ class TestRabbitHealthcheck(unittest.TestCase):
         self.rm = RabbitMonitor()
 
     def test_process_healthcheck(self):
-        url = settings.URLS['healthcheck']
 
         with responses.RequestsMock() as rsps:
             rsps.add(responses.GET,
-                     url,
+                     self.rm.urls['healthcheck'],
                      body='{"status": "ok"}',
                      status=200,
                      content_type='application/json')
@@ -31,7 +29,7 @@ class TestRabbitHealthcheck(unittest.TestCase):
 
         with responses.RequestsMock() as rsps:
             rsps.add(responses.GET,
-                     url,
+                     self.rm.urls['healthcheck'],
                      body='{"status": "bad"}',
                      status=500,
                      content_type='application/json')
@@ -43,11 +41,10 @@ class TestRabbitHealthcheck(unittest.TestCase):
                           cm.output)
 
     def test_process_aliveness(self):
-        url = settings.URLS['aliveness']
 
         with responses.RequestsMock() as rsps:
             rsps.add(responses.GET,
-                     url,
+                     self.rm.urls['aliveness'],
                      body='{"status": "ok"}',
                      status=200,
                      content_type='application/json')
@@ -60,7 +57,7 @@ class TestRabbitHealthcheck(unittest.TestCase):
 
         with responses.RequestsMock() as rsps:
             rsps.add(responses.GET,
-                     url,
+                     self.rm.urls['aliveness'],
                      body='{"status": "bad"}',
                      status=500,
                      content_type='application/json')

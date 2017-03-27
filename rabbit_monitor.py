@@ -27,13 +27,18 @@ class RabbitMonitor():
 
     def __init__(self):
         logger.info("Creating RabbitMonitor object")
+        healthcheck_url = settings.RABBIT_URL + 'healthchecks/node'
+        aliveness_url = settings.RABBIT_URL + 'aliveness-test/{}'.format(settings.RABBITMQ_DEFAULT_VHOST)
+
         self.session = requests.Session()
         self.session.auth = (settings.RABBITMQ_DEFAULT_USER,
                              settings.RABBITMQ_DEFAULT_PASS)
+        self.urls = {'healthcheck': healthcheck_url,
+                     'aliveness': aliveness_url}
 
     def call_healthcheck(self):
         logger.info('Getting rabbit healthcheck status')
-        healthcheck = self.session.get(settings.URLS['healthcheck'],
+        healthcheck = self.session.get(self.urls['healthcheck'],
                                        hooks=dict(response=self.process_healthcheck))
 
     def process_healthcheck(self, r, *args, **kwargs):
@@ -44,7 +49,7 @@ class RabbitMonitor():
 
     def call_aliveness(self):
         logger.info('Getting rabbit aliveness status')
-        aliveness = self.session.get(settings.URLS['aliveness'],
+        aliveness = self.session.get(self.urls['aliveness'],
                                      hooks=dict(response=self.process_aliveness))
 
     def process_aliveness(self, r, *args, **kwargs):
