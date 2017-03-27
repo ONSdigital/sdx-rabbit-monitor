@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #   coding: UTF-8
+from collections import namedtuple
 import logging
 import sys
 from time import sleep
@@ -17,24 +18,35 @@ logging.basicConfig(level=settings.LOGGING_LEVEL,
                     format=settings.LOGGING_FORMAT)
 logger = wrap_logger(logging.getLogger(__name__))
 
+Settings = namedtuple('Settings',
+                      [
+                          'rabbit_url',
+                          'rabbit_default_user',
+                          'rabbit_default_pass',
+                          'wait_time',
+                      ])
+
 
 class RabbitMonitor():
 
-    RABBIT_URL = settings.RABBIT_URL
-    RABBITMQ_DEFAULT_USER = settings.RABBITMQ_DEFAULT_USER
-    RABBITMQ_DEFAULT_PASS = settings.RABBITMQ_DEFAULT_PASS
-    WAIT_TIME = settings.WAIT_TIME
-
     def __init__(self):
         logger.info("Creating RabbitMonitor object")
-        healthcheck_url = settings.RABBIT_URL + 'healthchecks/node'
-        aliveness_url = settings.RABBIT_URL + 'aliveness-test/{}'.format(settings.RABBITMQ_DEFAULT_VHOST)
 
-        self.session = requests.Session()
-        self.session.auth = (settings.RABBITMQ_DEFAULT_USER,
-                             settings.RABBITMQ_DEFAULT_PASS)
+        self.settings = Settings(wait_time=settings.WAIT_TIME,
+                                 rabbit_url=settings.RABBIT_URL,
+                                 rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
+                                 rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS)
+
+        healthcheck_url = self.settings.rabbit_url + 'healthchecks/node'
+        aliveness_url = (self.settings.rabbit_url +
+                         'aliveness-test/{}'.format(settings.RABBITMQ_DEFAULT_VHOST))
+
         self.urls = {'healthcheck': healthcheck_url,
                      'aliveness': aliveness_url}
+
+        self.session = requests.Session()
+        self.session.auth = (self.settings.rabbit_default_user,
+                             self.settings.rabbit_default_pass)
 
     def call_healthcheck(self):
         logger.info('Getting rabbit healthcheck status')
