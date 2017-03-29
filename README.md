@@ -6,8 +6,21 @@
 
 Data returned is logged to sys.stderr.
 
-Configuration
-=============
+## Installation
+
+To install, use:
+
+```
+make build
+```
+
+To run the test suite, use:
+
+```
+make test
+```
+
+## Configuration
 
 The main configuration options are listed below:
 
