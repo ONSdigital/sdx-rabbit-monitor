@@ -57,7 +57,7 @@ class RabbitMonitor():
             while True:
                 self.call_healthcheck()
                 self.call_aliveness()
-                sleep(self.WAIT_TIME)
+                sleep(self.settings.wait_time)
         except KeyboardInterrupt:
             self.shutdown()
 
