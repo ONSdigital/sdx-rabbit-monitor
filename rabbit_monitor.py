@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 #   coding: UTF-8
+import asyncio
 from collections import namedtuple
 from json import dumps
 import logging
-from multiprocessing import Process
 import os
 import sys
 from time import sleep
 
-from bottle import Bottle, response, run
-import requests
+import aiohttp
+from aiohttp import web
 from structlog import wrap_logger
 
 import settings
@@ -25,97 +25,116 @@ Settings = namedtuple('Settings',
                           'rabbit_url',
                           'rabbit_default_user',
                           'rabbit_default_pass',
+                          'rabbit_default_vhost',
                           'wait_time',
                       ])
 
+logger.info("Creating RabbitMonitor object")
 
-class RabbitMonitor():
+settings = Settings(wait_time=settings.WAIT_TIME,
+                    rabbit_url=settings.RABBIT_URL,
+                    rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
+                    rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS,
+                    rabbit_default_vhost = settings.RABBITMQ_DEFAULT_VHOST)
 
-    def __init__(self):
-        logger.info("Creating RabbitMonitor object")
+healthcheck_url = settings.rabbit_url + 'healthchecks/node'
+aliveness_url = (settings.rabbit_url +
+                 'aliveness-test/{}'.format(settings.rabbit_default_vhost))
 
-        self.settings = Settings(wait_time=settings.WAIT_TIME,
-                                 rabbit_url=settings.RABBIT_URL,
-                                 rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
-                                 rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS)
+urls = {'healthcheck': healthcheck_url,
+        'aliveness': aliveness_url}
 
-        healthcheck_url = self.settings.rabbit_url + 'healthchecks/node'
-        aliveness_url = (self.settings.rabbit_url +
-                         'aliveness-test/{}'.format(settings.RABBITMQ_DEFAULT_VHOST))
+"""
+def shutdown():
+    logger.info("Shutting down sdx-rabbit-monitor")
+    sys.exit()
 
-        self.urls = {'healthcheck': healthcheck_url,
-                     'aliveness': aliveness_url}
+"""
 
-        self.session = requests.Session()
-        self.session.auth = (self.settings.rabbit_default_user,
-                             self.settings.rabbit_default_pass)
-
-    def start(self):
-        logger.info("Starting sdx-rabbit-monitor", version=__version__)
-
+@asyncio.coroutine
+def fetch(session, url):
+    with aiohttp.Timeout(5):
+        resp = yield from session.get(url)
         try:
-            while True:
-                self.call_healthcheck()
-                self.call_aliveness()
-                sleep(self.settings.wait_time)
-        except KeyboardInterrupt:
-            self.shutdown()
-
-    def shutdown(self, signal=None, frame=None):
-        logger.info("Shutting down sdx-rabbit-monitor")
-        try:
-            self._p.shutdown()
-        except AttributeError:
-            # Process not started
-            pass
-
-        sys.exit()
-
-    def call_healthcheck(self):
-        logger.info('Getting rabbit healthcheck status')
-        healthcheck = self.session.get(self.urls['healthcheck'],
-                                       hooks=dict(response=self.process_healthcheck))
-
-    def process_healthcheck(self, r, *args, **kwargs):
-        if r.status_code == 200:
-            logger.info('Rabbit health ok', status=r.status_code)
-        else:
-            logger.error('Rabbit health bad', status=r.status_code)
-
-    def call_aliveness(self):
-        logger.info('Getting rabbit aliveness status')
-        aliveness = self.session.get(self.urls['aliveness'],
-                                     hooks=dict(response=self.process_aliveness))
-
-    def process_aliveness(self, r, *args, **kwargs):
-        if r.status_code == 200:
-            logger.info('Rabbit aliveness ok', status=r.status_code)
-        else:
-            logger.error('Rabbit aliveness bad', status=r.status_code)
+            return resp
+        except Exception as e:
+            # .close() on exception.
+            resp.close()
+            raise e
+        finally:
+            # .release() otherwise to return connection into free connection pool.
+            # It's ok to release closed response:
+            # https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client_reqrep.py#L664
+            yield from resp.release()
 
 
-app = Bottle()
+@asyncio.coroutine
+def aliveness(session):
+    logger.info('Getting rabbit aliveness status')
+    resp = yield from fetch(session, urls['aliveness'])
+    if resp.status == 200:
+        logger.info('Rabbit aliveness ok', status=resp.status)
+    else:
+        logger.error('Rabbit aliveness bad', status=resp.status)
+    return resp
 
 
-@app.route('/healthcheck')
-def healthcheck():
-    logger.info('sdx-rabbit-monitor self healthcheck', status=200)
-    response.content_type = 'application/json'
-    return dumps({'status': 'ok'})
+@asyncio.coroutine
+def healthcheck(session):
+    logger.info('Getting rabbit healthcheck status')
+    resp = yield from fetch(session, urls['healthcheck'])
+    if resp.status == 200:
+        logger.info('Rabbit healthcheck ok', status=resp.status)
+    else:
+        logger.error('Rabbit healthcheck bad', status=resp.status)
+    return resp
 
 
-def main():
-    port = int(os.getenv("port", 5000))
-    p = Process(target=run, args=(app,), kwargs={'port': port})
-    p.start()
+@asyncio.coroutine
+def monitor_rabbit(app):
+    auth = aiohttp.BasicAuth(settings.rabbit_default_pass,
+                             settings.rabbit_default_user)
+
     try:
-        rm = RabbitMonitor()
-        rm.start()
-    except KeyboardInterrupt:
-        p.terminate()
-        p.join()
-        rm.shutdown()
+      session = aiohttp.ClientSession(loop=app.loop,
+                                        auth=auth)
+      while True:
+        yield from aliveness(session)
+        yield from healthcheck(session)
+        yield from asyncio.sleep(settings.wait_time)
+    except asyncio.CancelledError:
+        logger.info("Stopping rabbit monitoring")
+        pass
 
 
-if __name__ == "__main__":
-    main()
+@asyncio.coroutine
+def start_background_tasks(app):
+    app['rabbit_poller'] = app.loop.create_task(monitor_rabbit(app))
+
+
+@asyncio.coroutine
+def cleanup_background_tasks(app):
+    app['rabbit_poller'].cancel()
+    yield from app['rabbit_poller']
+
+
+@asyncio.coroutine
+def on_shutdown(app):
+    app['rabbit_poller'].cancel()
+    yield from app['rabbit_poller']
+
+
+@asyncio.coroutine
+def self_healthcheck(request):
+    logger.info('sdx-rabbit-monitor self healthcheck', status=200)
+    return web.json_response({'status': 'ok'})
+
+app = web.Application()
+loop = asyncio.get_event_loop()
+app.router.add_get('/healthcheck', self_healthcheck)
+port = os.getenv("PORT", 5000)
+app.on_startup.append(start_background_tasks)
+app.on_cleanup.append(cleanup_background_tasks)
+app.on_shutdown.append(on_shutdown)
+logger.info("Starting sdx-rabbit-monitor", version=__version__)
+web.run_app(app, port=port)
