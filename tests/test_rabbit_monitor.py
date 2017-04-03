@@ -1,81 +1,58 @@
-#!/usr/bin/env python
-#   coding: UTF-8
-import unittest
+import asyncio
 
-import responses
+import aiohttp
+from aiohttp import web
+import pytest
 
-import rabbit_monitor
-from rabbit_monitor import RabbitMonitor
-
-
-class TestRabbitHealthcheck(unittest.TestCase):
-
-    rm = RabbitMonitor()
-
-    def test_process_healthcheck(self):
-
-        with responses.RequestsMock() as rsps:
-            rsps.add(responses.GET,
-                     self.rm.urls['healthcheck'],
-                     body='{"status": "ok"}',
-                     status=200,
-                     content_type='application/json')
-
-            with self.assertLogs('rabbit_monitor', level='INFO') as cm:
-                self.rm.call_healthcheck()
-
-            self.assertIn("INFO:rabbit_monitor:status=200 event='Rabbit health ok'",
-                          cm.output)
-
-        with responses.RequestsMock() as rsps:
-            rsps.add(responses.GET,
-                     self.rm.urls['healthcheck'],
-                     body='{"status": "bad"}',
-                     status=500,
-                     content_type='application/json')
-
-            with self.assertLogs('rabbit_monitor', level='ERROR') as cm:
-                self.rm.call_healthcheck()
-
-            self.assertIn("ERROR:rabbit_monitor:status=500 event='Rabbit health bad'",
-                          cm.output)
-
-    def test_process_aliveness(self):
-
-        with responses.RequestsMock() as rsps:
-            rsps.add(responses.GET,
-                     self.rm.urls['aliveness'],
-                     body='{"status": "ok"}',
-                     status=200,
-                     content_type='application/json')
-
-            with self.assertLogs('rabbit_monitor', level='INFO') as cm:
-                self.rm.call_aliveness()
-
-            self.assertIn("INFO:rabbit_monitor:status=200 event='Rabbit aliveness ok'",
-                          cm.output)
-
-        with responses.RequestsMock() as rsps:
-            rsps.add(responses.GET,
-                     self.rm.urls['aliveness'],
-                     body='{"status": "bad"}',
-                     status=500,
-                     content_type='application/json')
-
-            with self.assertLogs('rabbit_monitor', level='ERROR') as cm:
-                self.rm.call_aliveness()
-
-            self.assertIn("ERROR:rabbit_monitor:status=500 event='Rabbit aliveness bad'",
-                          cm.output)
-
-    def test_shutdown(self):
-        with self.assertRaises(SystemExit) as cm:
-            self.rm.shutdown()
-            self.assertEqual(cm.exception.code, 0)
-
-    def test_healthcheck_endpoint_method(self):
-        self.assertEqual('{"status": "ok"}', rabbit_monitor.healthcheck())
+from rabbit_monitor import fetch, self_healthcheck
 
 
-if __name__ == '__main__':
-    unittest.main()
+@pytest.fixture
+def cli(loop, test_client):
+    app = web.Application()
+    app.router.add_get('/healthcheck', self_healthcheck)
+    app.router.add_get('/rabbit_aliveness_good', rabbit_fetch_good)
+    return loop.run_until_complete(test_client(app))
+
+
+@pytest.yield_fixture
+def loop():
+    # Set-up
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    yield loop
+
+    # Clean-up
+    loop.close()
+
+
+def rabbit_aliveness_good(request):
+    return web.json_response({'status': 'ok'})
+
+
+@asyncio.coroutine
+def test_self_healthcheck(cli):
+    resp = yield from cli.get('/healthcheck')
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert text == '{"status": "ok"}'
+
+
+@asyncio.coroutine
+def rabbit_fetch_good(cli):
+    port = cli.server.port
+    url = 'http://localhost:{}/rabbit_aliveness_good'.format(port)
+    session = aiohttp.ClientSession()
+    resp = yield from fetch(session=session, url=url)
+    assert resp.status == 200
+    text = yield from resp.text()
+    assert text == '{"status": "ok"}'
+
+
+@asyncio.coroutine
+def test_fetch_bad(cli):
+    port = cli.server.port
+    url = 'http://localhost:{}/rabbit_aliveness_bad'.format(port)
+    session = aiohttp.ClientSession()
+    resp = yield from fetch(session=session, url=url)
+    assert resp.status != 200
