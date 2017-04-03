@@ -2,11 +2,8 @@
 #   coding: UTF-8
 import asyncio
 from collections import namedtuple
-from json import dumps
 import logging
 import os
-import sys
-from time import sleep
 
 import aiohttp
 from aiohttp import web
@@ -22,6 +19,7 @@ logger = wrap_logger(logging.getLogger(__name__))
 
 Settings = namedtuple('Settings',
                       [
+                          'port',
                           'rabbit_url',
                           'rabbit_default_user',
                           'rabbit_default_pass',
@@ -31,11 +29,12 @@ Settings = namedtuple('Settings',
 
 logger.info("Creating RabbitMonitor object")
 
-settings = Settings(wait_time=settings.WAIT_TIME,
+settings = Settings(port=os.getenv("PORT", 5000),
+                    wait_time=settings.WAIT_TIME,
                     rabbit_url=settings.RABBIT_URL,
                     rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
                     rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS,
-                    rabbit_default_vhost = settings.RABBITMQ_DEFAULT_VHOST)
+                    rabbit_default_vhost=settings.RABBITMQ_DEFAULT_VHOST)
 
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
@@ -50,6 +49,7 @@ def shutdown():
     sys.exit()
 
 """
+
 
 @asyncio.coroutine
 def fetch(session, url):
@@ -96,15 +96,14 @@ def monitor_rabbit(app):
                              settings.rabbit_default_user)
 
     try:
-      session = aiohttp.ClientSession(loop=app.loop,
+        session = aiohttp.ClientSession(loop=app.loop,
                                         auth=auth)
-      while True:
-        yield from aliveness(session)
-        yield from healthcheck(session)
-        yield from asyncio.sleep(settings.wait_time)
+        while True:
+            yield from aliveness(session)
+            yield from healthcheck(session)
+            yield from asyncio.sleep(settings.wait_time)
     except asyncio.CancelledError:
         logger.info("Stopping rabbit monitoring")
-        pass
 
 
 @asyncio.coroutine
@@ -119,22 +118,22 @@ def cleanup_background_tasks(app):
 
 
 @asyncio.coroutine
-def on_shutdown(app):
-    app['rabbit_poller'].cancel()
-    yield from app['rabbit_poller']
-
-
-@asyncio.coroutine
 def self_healthcheck(request):
     logger.info('sdx-rabbit-monitor self healthcheck', status=200)
     return web.json_response({'status': 'ok'})
 
-app = web.Application()
-loop = asyncio.get_event_loop()
-app.router.add_get('/healthcheck', self_healthcheck)
-port = os.getenv("PORT", 5000)
-app.on_startup.append(start_background_tasks)
-app.on_cleanup.append(cleanup_background_tasks)
-app.on_shutdown.append(on_shutdown)
-logger.info("Starting sdx-rabbit-monitor", version=__version__)
-web.run_app(app, port=port)
+
+def init(app):
+    logger.info("Starting sdx-rabbit-monitor", version=__version__)
+    app.router.add_get('/healthcheck', self_healthcheck)
+    app.on_startup.append(start_background_tasks)
+    app.on_cleanup.append(cleanup_background_tasks)
+    return app
+
+
+app = web.Application(loop=None)
+app = init(app)
+
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    web.run_app(app, port=int(settings.port), loop=loop)
