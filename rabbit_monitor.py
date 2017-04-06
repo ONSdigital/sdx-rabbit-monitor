@@ -9,12 +9,12 @@ import aiohttp
 from aiohttp import web
 from structlog import wrap_logger
 
-import settings
+import settings as env
 
 __version__ = "0.0.1"
 
-logging.basicConfig(level=settings.LOGGING_LEVEL,
-                    format=settings.LOGGING_FORMAT)
+logging.basicConfig(level=env.LOGGING_LEVEL,
+                    format=env.LOGGING_FORMAT)
 logger = wrap_logger(logging.getLogger(__name__))
 
 Settings = namedtuple('Settings',
@@ -30,11 +30,11 @@ Settings = namedtuple('Settings',
 logger.info("Creating RabbitMonitor object")
 
 settings = Settings(port=os.getenv("PORT", 5000),
-                    wait_time=settings.WAIT_TIME,
-                    rabbit_url=settings.RABBIT_URL,
-                    rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
-                    rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS,
-                    rabbit_default_vhost=settings.RABBITMQ_DEFAULT_VHOST)
+                    wait_time=env.WAIT_TIME,
+                    rabbit_url=env.RABBIT_URL,
+                    rabbit_default_user=env.RABBITMQ_DEFAULT_USER,
+                    rabbit_default_pass=env.RABBITMQ_DEFAULT_PASS,
+                    rabbit_default_vhost=env.RABBITMQ_DEFAULT_VHOST)
 
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
@@ -42,13 +42,6 @@ aliveness_url = (settings.rabbit_url +
 
 urls = {'healthcheck': healthcheck_url,
         'aliveness': aliveness_url}
-
-"""
-def shutdown():
-    logger.info("Shutting down sdx-rabbit-monitor")
-    sys.exit()
-
-"""
 
 
 @asyncio.coroutine
@@ -106,7 +99,6 @@ def monitor_rabbit(app):
         logger.info("Stopping rabbit monitoring")
 
 
-@asyncio.coroutine
 def start_background_tasks(app):
     app['rabbit_poller'] = app.loop.create_task(monitor_rabbit(app))
 
