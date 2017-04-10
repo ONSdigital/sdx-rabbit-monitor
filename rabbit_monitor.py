@@ -9,12 +9,12 @@ import aiohttp
 from aiohttp import web
 from structlog import wrap_logger
 
-import settings as env
+import settings
 
 __version__ = "0.0.1"
 
-logging.basicConfig(level=env.LOGGING_LEVEL,
-                    format=env.LOGGING_FORMAT)
+logging.basicConfig(level=settings.LOGGING_LEVEL,
+                    format=settings.LOGGING_FORMAT)
 logger = wrap_logger(logging.getLogger(__name__))
 
 Settings = namedtuple('Settings',
@@ -28,11 +28,11 @@ Settings = namedtuple('Settings',
                       ])
 
 settings = Settings(port=os.getenv("PORT", 5000),
-                    wait_time=env.WAIT_TIME,
-                    rabbit_url=env.RABBIT_URL,
-                    rabbit_default_user=env.RABBITMQ_DEFAULT_USER,
-                    rabbit_default_pass=env.RABBITMQ_DEFAULT_PASS,
-                    rabbit_default_vhost=env.RABBITMQ_DEFAULT_VHOST)
+                    wait_time=settings.WAIT_TIME,
+                    rabbit_url=settings.RABBIT_URL,
+                    rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
+                    rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS,
+                    rabbit_default_vhost=settings.RABBITMQ_DEFAULT_VHOST)
 
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
