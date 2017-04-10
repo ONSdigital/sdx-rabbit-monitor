@@ -2,6 +2,7 @@
 #   coding: UTF-8
 import asyncio
 from collections import namedtuple
+import json
 import logging
 import os
 
@@ -37,9 +38,13 @@ settings = Settings(port=os.getenv("PORT", 5000),
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
                  'aliveness-test/{}'.format(settings.rabbit_default_vhost))
+message_url = (settings.rabbit_url +
+               'overview/')
 
 urls = {'healthcheck': healthcheck_url,
-        'aliveness': aliveness_url}
+        'aliveness': aliveness_url,
+        'messages': message_url,
+        }
 
 
 @asyncio.coroutine
@@ -80,6 +85,28 @@ def healthcheck(session):
 
 
 @asyncio.coroutine
+def message_count(session, url=None):
+    logger.info('Getting message counts')
+    if url is None:
+        resp = yield from fetch(session, urls['messages'])
+    else:
+        resp = yield from fetch(session, url)
+
+    if resp.status == 200:
+        text = yield from resp.text()
+        text = json.loads(text)
+
+        queue_totals = text.get('queue_totals')
+        logger.info('Rabbit messages',
+                    status=resp.status,
+                    count=queue_totals.get('messages'),
+                    rate=queue_totals.get('messages_details', {}).get('rate'),
+                    ready=queue_totals.get('messages_ready'),
+                    unackd=queue_totals.get('messages_unacknowledged'))
+    return resp
+
+
+@asyncio.coroutine
 def monitor_rabbit(app):
     auth = aiohttp.BasicAuth(settings.rabbit_default_pass,
                              settings.rabbit_default_user)
@@ -91,6 +118,7 @@ def monitor_rabbit(app):
             tasks = [
                 aliveness(session),
                 healthcheck(session),
+                message_count(session),
             ]
             tasks = asyncio.gather(*[task for task in tasks],
                                    return_exceptions=True)
