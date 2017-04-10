@@ -4,7 +4,7 @@ import aiohttp
 from aiohttp import web
 import pytest
 
-from rabbit_monitor import fetch, self_healthcheck
+from rabbit_monitor import fetch, self_healthcheck, message_count
 
 
 @pytest.fixture
@@ -12,6 +12,7 @@ def cli(loop, test_client):
     app = web.Application()
     app.router.add_get('/healthcheck', self_healthcheck)
     app.router.add_get('/rabbit_aliveness_good', rabbit_fetch_good)
+    app.router.add_get('/test_message_count', message_count)
     return loop.run_until_complete(test_client(app))
 
 
@@ -28,6 +29,19 @@ def loop():
 
 def rabbit_aliveness_good(request):
     return web.json_response({'status': 'ok'})
+
+
+def mock_message_count(request):
+    return web.json_response({'queue_totals': {'messages': 10}})
+
+
+@asyncio.coroutine
+def test_message_count(cli):
+    port = cli.server.port
+    url = 'http://localhost:{}/test_message_count'.format(port)
+    session = aiohttp.ClientSession()
+    resp = message_count(session, url)
+    assert resp.status == 200
 
 
 @asyncio.coroutine
