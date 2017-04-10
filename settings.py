@@ -9,7 +9,7 @@ RABBITMQ_DEFAULT_USER = os.getenv('RABBITMQ_DEFAULT_USER', default='rabbit')
 RABBITMQ_DEFAULT_VHOST = os.getenv('RABBITMQ_DEFAULT_VHOST', default='%2f')
 
 RABBIT_URL = 'http://{hostname}:{port}/api/'.format(
-    hostname=os.getenv('RABBITMQ_HOST', '0.0.0.0'),
+    hostname=os.getenv('RABBITMQ_HOST', 'rabbit'),
     port=os.getenv('RABBIT_MGT_PORT', 15672)
 )
 

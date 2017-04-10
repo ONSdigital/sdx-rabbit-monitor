@@ -9,12 +9,12 @@ import aiohttp
 from aiohttp import web
 from structlog import wrap_logger
 
-import settings as env
+import settings
 
 __version__ = "0.0.1"
 
-logging.basicConfig(level=env.LOGGING_LEVEL,
-                    format=env.LOGGING_FORMAT)
+logging.basicConfig(level=settings.LOGGING_LEVEL,
+                    format=settings.LOGGING_FORMAT)
 logger = wrap_logger(logging.getLogger(__name__))
 
 Settings = namedtuple('Settings',
@@ -27,14 +27,12 @@ Settings = namedtuple('Settings',
                           'wait_time',
                       ])
 
-logger.info("Creating RabbitMonitor object")
-
 settings = Settings(port=os.getenv("PORT", 5000),
-                    wait_time=env.WAIT_TIME,
-                    rabbit_url=env.RABBIT_URL,
-                    rabbit_default_user=env.RABBITMQ_DEFAULT_USER,
-                    rabbit_default_pass=env.RABBITMQ_DEFAULT_PASS,
-                    rabbit_default_vhost=env.RABBITMQ_DEFAULT_VHOST)
+                    wait_time=settings.WAIT_TIME,
+                    rabbit_url=settings.RABBIT_URL,
+                    rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
+                    rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS,
+                    rabbit_default_vhost=settings.RABBITMQ_DEFAULT_VHOST)
 
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
@@ -47,18 +45,16 @@ urls = {'healthcheck': healthcheck_url,
 @asyncio.coroutine
 def fetch(session, url):
     with aiohttp.Timeout(5):
-        resp = yield from session.get(url)
+        resp = None
         try:
-            return resp
+            return (yield from session.get(url))
         except Exception as e:
-            # .close() on exception.
-            resp.close()
-            raise e
+            logger.error(e, status='bad')
+            if resp is not None:
+                yield from resp.close()
         finally:
-            # .release() otherwise to return connection into free connection pool.
-            # It's ok to release closed response:
-            # https://github.com/KeepSafe/aiohttp/blob/master/aiohttp/client_reqrep.py#L664
-            yield from resp.release()
+            if resp is not None:
+                yield from resp.release()
 
 
 @asyncio.coroutine
@@ -92,11 +88,17 @@ def monitor_rabbit(app):
         session = aiohttp.ClientSession(loop=app.loop,
                                         auth=auth)
         while True:
-            yield from aliveness(session)
-            yield from healthcheck(session)
+            tasks = [
+                aliveness(session),
+                healthcheck(session),
+            ]
+            tasks = asyncio.gather(*[task for task in tasks],
+                                   return_exceptions=True)
             yield from asyncio.sleep(settings.wait_time)
     except asyncio.CancelledError:
         logger.info("Stopping rabbit monitoring")
+    finally:
+        yield from session.close()
 
 
 def start_background_tasks(app):
