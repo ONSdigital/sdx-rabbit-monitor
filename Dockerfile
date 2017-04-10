@@ -6,7 +6,6 @@ ADD settings.py /app/settings.py
 ADD wsgi.py /app/wsgi.py
 ADD startup.sh /app/startup.sh
 
-# set working directory to /app/
 WORKDIR /app/
 
 EXPOSE 5000
