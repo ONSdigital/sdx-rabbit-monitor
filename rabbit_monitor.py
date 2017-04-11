@@ -12,6 +12,9 @@ from structlog import wrap_logger
 
 import settings
 
+BYTES_IN_GB = 1073741824
+BYTES_IN_MB = 1048576
+
 __version__ = "0.0.1"
 
 logging.basicConfig(level=settings.LOGGING_LEVEL,
@@ -38,12 +41,16 @@ settings = Settings(port=os.getenv("PORT", 5000),
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
                  'aliveness-test/{}'.format(settings.rabbit_default_vhost))
+
 message_url = (settings.rabbit_url +
                'overview/')
+
+nodes_url = settings.rabbit_url + 'nodes'
 
 urls = {'healthcheck': healthcheck_url,
         'aliveness': aliveness_url,
         'messages': message_url,
+        'nodes': nodes_url,
         }
 
 
@@ -107,6 +114,61 @@ def message_count(session, url=None):
 
 
 @asyncio.coroutine
+def nodes_info(session, url=None):
+    logger.info('Getting rabbit disk space')
+    if url is None:
+        resp = yield from fetch(session, urls['nodes'])
+    else:
+        resp = yield from fetch(session, url)
+
+    if resp.status == 200:
+        nodes = yield from resp.json()
+        for node in nodes:
+            name = node['name']
+            free_disk_space = node['disk_free']
+            free_disk_space_limit = node['disk_free_limit']
+            percent_disk = _calculate_percentage(free_disk_space, free_disk_space_limit)
+            memory_used = node['mem_used']
+            memory_used_limit = node['mem_limit']
+            percent_mem = _calculate_percentage(memory_used_limit, memory_used)
+
+            logger.info('Rabbit disk space', status=resp.status, node=name,
+                        free_disk_space=_convert_to_gigabytes(free_disk_space),
+                        free_disk_space_limit=_convert_to_gigabytes(free_disk_space_limit),
+                        percentage_away_from_limit=percent_disk)
+
+            logger.info('Rabbit memory', status=resp.status, node=name,
+                        memory_used=_convert_to_megabytes(memory_used),
+                        memory_used_limit=_convert_to_megabytes(memory_used_limit),
+                        percentage_away_from_limit=percent_mem)
+    else:
+        logger.error('Rabbit disk space unavailable', status=resp.status)
+    return name, free_disk_space, free_disk_space_limit, percent_disk, memory_used, memory_used_limit, percent_mem
+
+
+def _calculate_percentage(value1, value2):
+    percentage = (value1 - value2) / value1
+    percentage = percentage * 100
+    percentage = round(percentage, 2)
+    percentage = str(percentage)
+    return percentage + '%'
+
+
+def _convert_to_gigabytes(mem_in_bytes):
+    gb = mem_in_bytes / BYTES_IN_GB
+    gb = round(gb, 2)
+    gb = str(gb) + "GB"
+    return gb
+
+
+def _convert_to_megabytes(mem_in_bytes):
+    mb = mem_in_bytes / BYTES_IN_MB
+    mb = round(mb, 2)
+    mb = str(mb) + "MB"
+    return mb
+
+
+@asyncio.coroutine
 def monitor_rabbit(app):
     auth = aiohttp.BasicAuth(settings.rabbit_default_pass,
                              settings.rabbit_default_user)
@@ -119,6 +181,7 @@ def monitor_rabbit(app):
                 aliveness(session),
                 healthcheck(session),
                 message_count(session),
+                nodes_info(session),
             ]
             tasks = asyncio.gather(*[task for task in tasks],
                                    return_exceptions=True)
