@@ -50,7 +50,8 @@ nodes_url = settings.rabbit_url + 'nodes'
 urls = {'healthcheck': healthcheck_url,
         'aliveness': aliveness_url,
         'messages': message_url,
-        'nodes': nodes_url}
+        'nodes': nodes_url,
+        }
 
 
 @asyncio.coroutine
