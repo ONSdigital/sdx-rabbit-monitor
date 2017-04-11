@@ -26,6 +26,8 @@ Settings = namedtuple('Settings',
                           'rabbit_default_pass',
                           'rabbit_default_vhost',
                           'wait_time',
+                          'stats_window',
+                          'stats_incr',
                       ])
 
 settings = Settings(port=os.getenv("PORT", 5000),
@@ -33,7 +35,9 @@ settings = Settings(port=os.getenv("PORT", 5000),
                     rabbit_url=settings.RABBIT_URL,
                     rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
                     rabbit_default_pass=settings.RABBITMQ_DEFAULT_PASS,
-                    rabbit_default_vhost=settings.RABBITMQ_DEFAULT_VHOST)
+                    rabbit_default_vhost=settings.RABBITMQ_DEFAULT_VHOST,
+                    stats_window=settings.RABBIT_MONITOR_STATS_WINDOW,
+                    stats_incr=settings.RABBIT_MONITOR_STATS_INCREMENT,)
 
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
 aliveness_url = (settings.rabbit_url +
@@ -46,13 +50,18 @@ urls = {'healthcheck': healthcheck_url,
         'messages': message_url,
         }
 
+params = {'lengths_age': settings.stats_window,
+          'lengths_incr': settings.stats_incr,
+          }
+
 
 @asyncio.coroutine
 def fetch(session, url):
     with aiohttp.Timeout(5):
         resp = None
         try:
-            return (yield from session.get(url))
+            return (yield from session.get(url,
+                                           params=params))
         except Exception as e:
             logger.error(e, status='bad')
             if resp is not None:
