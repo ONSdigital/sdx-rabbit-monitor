@@ -57,9 +57,9 @@ urls = {'healthcheck': healthcheck_url,
         'nodes': nodes_url,
         }
 
-params = {'lengths_age': settings.stats_window,
-          'lengths_incr': settings.stats_incr,
-          }
+url_parameters = {'lengths_age': settings.stats_window,
+                  'lengths_incr': settings.stats_incr,
+                  }
 
 
 @asyncio.coroutine
@@ -68,7 +68,7 @@ def fetch(session, url):
         resp = None
         try:
             return (yield from session.get(url,
-                                           params=params))
+                                           params=url_parameters))
         except Exception as e:
             logger.error(e, status='bad')
             if resp is not None:
