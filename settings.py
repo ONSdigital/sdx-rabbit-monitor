@@ -13,7 +13,7 @@ RABBIT_URL = 'http://{hostname}:{port}/api/'.format(
     port=os.getenv('RABBIT_MGT_PORT', 15672)
 )
 
-WAIT_TIME = os.getenv('RABBIT_MONITOR_WAIT_TIME', 10)
+WAIT_TIME = os.getenv('RABBIT_MONITOR_WAIT_TIME', 300)
 
 # Number of seconds to look back and gather stats from
 RABBIT_MONITOR_STATS_WINDOW = os.getenv('RABBIT_MONITOR_STATS_WINDOW',
