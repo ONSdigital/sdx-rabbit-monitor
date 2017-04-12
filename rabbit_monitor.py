@@ -15,7 +15,7 @@ import settings
 BYTES_IN_GB = 1073741824
 BYTES_IN_MB = 1048576
 
-__version__ = "0.0.1"
+__version__ = "1.0.0"
 
 logging.basicConfig(level=settings.LOGGING_LEVEL,
                     format=settings.LOGGING_FORMAT)
