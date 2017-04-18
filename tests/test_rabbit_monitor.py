@@ -5,7 +5,6 @@ import aiohttp
 from aiohttp import web
 import pytest
 
-
 from rabbit_monitor import fetch, self_healthcheck, message_count, nodes_info
 
 

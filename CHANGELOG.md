@@ -1,5 +1,8 @@
 ### Unreleased
 
+### 1.0.1 2017-04-18
+- Fix env var handling bugs
+
 ### 1.0.0 2017-04-12
 - Add healthcheck endpoint for service
 - Add asynchronous behaviour for client/server actions
