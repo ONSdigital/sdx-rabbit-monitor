@@ -1,4 +1,5 @@
 ### Unreleased
+- Fix env var handling bugs
 
 ### 1.0.0 2017-04-12
 - Add healthcheck endpoint for service
