@@ -18,4 +18,5 @@ include/
 pip-selfcheck.json
 venv/
 .idea/
-
+coverage.xml
+.coverage

@@ -4,8 +4,25 @@ import json
 import aiohttp
 from aiohttp import web
 import pytest
+import os
+import unittest
+
+os.environ['RABBIT_MONITOR_WAIT_TIME'] = '300'
+os.environ['RABBIT_MONITOR_STATS_WINDOW'] = '300'
+os.environ['RABBIT_MONITOR_STATS_INCREMENT'] = '30'
+os.environ['SDX_RABBIT_MONITOR_PASS'] = 'secret'
+os.environ['SDX_RABBIT_MONITOR_USER'] = 'rabbit'
+os.environ['SDX_RABBIT_MONITOR_DEFAULT_VHOST'] = '%2f'
+os.environ['SDX_RABBIT_MONITOR_RABBIT_HOST'] = '0.0.0.0'
+os.environ['SDX_RABBIT_MONITOR_HOST'] = '0.0.0.0'
+os.environ['SDX_RABBIT_MONITOR_MGT_PORT'] = '15672'
+os.environ['SDX_RABBIT_MONITOR_WAIT_TIME'] = '30'
+os.environ['SDX_RABBIT_MONITOR_STATS_WINDOW'] = '5'
+os.environ['SDX_RABBIT_MONITOR_STATS_INCREMENT'] = '5'
+os.environ['PORT'] = '5000'
 
 from rabbit_monitor import fetch, self_healthcheck, message_count, nodes_info
+from rabbit_monitor import check_globals
 
 
 @pytest.fixture
@@ -96,7 +113,7 @@ def test_self_healthcheck(cli):
 
 @asyncio.coroutine
 def rabbit_fetch_good(cli):
-    port = cli.server.port
+    port = int(cli.server.port)
     url = 'http://localhost:{}/rabbit_aliveness_good'.format(port)
     session = aiohttp.ClientSession()
     resp = yield from fetch(session=session, url=url)
@@ -112,3 +129,22 @@ def test_fetch_bad(cli):
     session = aiohttp.ClientSession()
     resp = yield from fetch(session=session, url=url)
     assert resp.status != 200
+
+
+class CheckGlobals(unittest.TestCase):
+
+    def test_check_globals_negative(self):
+        class MockModule:
+
+            SDX_VAR1 = "some/value"
+            SDX_VAR2 = None
+
+        self.assertFalse(check_globals(MockModule))
+
+    def test_check_globals_positive(self):
+        class MockModule:
+
+            SDX_VAR1 = "some/value"
+            SDX_VAR2 = 8080
+
+        self.assertTrue(check_globals(MockModule))

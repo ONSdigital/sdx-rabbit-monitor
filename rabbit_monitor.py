@@ -8,17 +8,19 @@ import os
 
 import aiohttp
 from aiohttp import web
+from sdx.common.logger_config import logger_initial_config
 from structlog import wrap_logger
 
 import settings
+import sys
 
 BYTES_IN_GB = 1073741824
 BYTES_IN_MB = 1048576
 
 __version__ = "1.0.1"
 
-logging.basicConfig(level=settings.LOGGING_LEVEL,
-                    format=settings.LOGGING_FORMAT)
+logger_initial_config(service_name='sdx-rabbit-monitor')
+
 logger = wrap_logger(logging.getLogger(__name__))
 
 Settings = namedtuple('Settings',
@@ -33,7 +35,7 @@ Settings = namedtuple('Settings',
                           'stats_incr',
                       ])
 
-settings = Settings(port=os.getenv("PORT", 5000),
+settings = Settings(port=settings.PORT,
                     wait_time=settings.WAIT_TIME,
                     rabbit_url=settings.RABBIT_URL,
                     rabbit_default_user=settings.RABBITMQ_DEFAULT_USER,
@@ -60,6 +62,11 @@ urls = {'healthcheck': healthcheck_url,
 url_parameters = {'lengths_age': settings.stats_window,
                   'lengths_incr': settings.stats_incr,
                   }
+
+
+def check_globals(module):
+    g = {k: v for k, v in vars(module).items() if not k.startswith("_") and k.isupper()}
+    return all(g.values())
 
 
 @asyncio.coroutine
@@ -179,8 +186,8 @@ def _convert_to_megabytes(mem_in_bytes):
 
 @asyncio.coroutine
 def monitor_rabbit(app):
-    auth = aiohttp.BasicAuth(settings.rabbit_default_pass,
-                             settings.rabbit_default_user)
+    auth = aiohttp.BasicAuth(settings.rabbit_default_user,
+                             settings.rabbit_default_pass)
 
     try:
         session = aiohttp.ClientSession(loop=app.loop,
@@ -225,9 +232,35 @@ def init(app):
     return app
 
 
+def _get_value(key):
+    value = os.getenv(key)
+    if not value:
+        raise ValueError("No value set for " + key)
+
+
+def check_default_env_vars():
+
+    env_vars = ["RABBITMQ_DEFAULT_USER", "RABBITMQ_DEFAULT_PASS", "RABBITMQ_HOST", "RABBIT_MGT_PORT",
+                "RABBIT_MONITOR_WAIT_TIME", "RABBIT_MONITOR_STATS_WINDOW", "RABBIT_MONITOR_STATS_INCREMENT",
+                "RABBITMQ_DEFAULT_VHOST"]
+
+    missing_env_var = False
+
+    for i in env_vars:
+        try:
+            _get_value(i)
+        except ValueError as e:
+            logger.error("Unable to start service", error=e)
+            missing_env_var = True
+
+    if missing_env_var is True:
+        sys.exit(1)
+
+
 app = web.Application(loop=None)
 app = init(app)
 
 if __name__ == "__main__":
+    check_default_env_vars()
     loop = asyncio.get_event_loop()
     web.run_app(app, port=int(settings.port), loop=loop)

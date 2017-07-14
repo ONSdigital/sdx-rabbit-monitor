@@ -2,7 +2,14 @@ language: python
 python:
     - "3.5"
     - "3.4"
+before_install:
+    - git clone https://github.com/ONSdigital/sdx-common.git
+    - pip3 install ./sdx-common
 install:
-    - make
+    - make build
+    - pip install codecov
 script:
-- make test
+    - make test
+    - coverage run -m unittest tests/*.py
+after_success:
+    - codecov
