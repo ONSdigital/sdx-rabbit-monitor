@@ -1,4 +1,4 @@
-### Unreleased
+### 1.1.0 2017-07-25
 - Remove env var defaults
 - Add codacy status checks
 - Adding sdx-common functionality
