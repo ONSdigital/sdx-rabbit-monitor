@@ -14,12 +14,6 @@ To install, use:
 make build
 ```
 
-To install using local sdx-common repo (requires SDX_HOME environment variable), use:
-
-```
-make dev
-```
-
 To run the test suite, use:
 
 ```
