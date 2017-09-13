@@ -1,5 +1,6 @@
 ### Unreleased
 - Ensure integrity and version of library dependencies
+- Remove sdx common git clone for docker
 
 ### 1.1.0 2017-07-25
 - Remove env var defaults
