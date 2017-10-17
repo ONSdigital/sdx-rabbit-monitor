@@ -15,10 +15,10 @@ RABBIT_URL = 'http://{hostname}:{port}/api/'.format(
     port=os.getenv('SDX_RABBIT_MONITOR_MGT_PORT')
 )
 
-WAIT_TIME = int('120')
+WAIT_TIME = 120
 
 # Number of seconds to look back and gather stats from
-RABBIT_MONITOR_STATS_WINDOW = int('120')
+RABBIT_MONITOR_STATS_WINDOW = 120
 
 # Sample frequency in stats window
 RABBIT_MONITOR_STATS_INCREMENT = '30'
