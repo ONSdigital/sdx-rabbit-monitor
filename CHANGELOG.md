@@ -1,4 +1,6 @@
 ### Unreleased
+
+### 1.2.0 2017-10-18
 - Ensure integrity and version of library dependencies
 - Remove sdx common git clone for docker
 
