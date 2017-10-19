@@ -1,4 +1,5 @@
 ### Unreleased
+- Add config to config file
 
 ### 1.2.0 2017-10-18
 - Ensure integrity and version of library dependencies
