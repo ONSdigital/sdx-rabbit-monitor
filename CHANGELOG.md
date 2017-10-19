@@ -1,6 +1,9 @@
 ### Unreleased
+
+### 1.2.0 2017-10-18
 - Ensure integrity and version of library dependencies
 - Remove sdx common git clone for docker
+- Hardcode a number of unchanging configurable variables
 
 ### 1.1.0 2017-07-25
 - Remove env var defaults
