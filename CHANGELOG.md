@@ -2,6 +2,7 @@
 
 ### 1.3.0 2017-11-01
 - Add config to config file
+- Remove sdx-common logging
 
 ### 1.2.0 2017-10-18
 - Ensure integrity and version of library dependencies
