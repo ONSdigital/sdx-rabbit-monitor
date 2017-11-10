@@ -8,7 +8,6 @@ import os
 
 import aiohttp
 from aiohttp import web
-from sdx.common.logger_config import logger_initial_config
 from structlog import wrap_logger
 
 import settings
@@ -19,7 +18,10 @@ BYTES_IN_MB = 1048576
 
 __version__ = "1.3.0"
 
-logger_initial_config(service_name='sdx-rabbit-monitor')
+
+logging.basicConfig(format=settings.LOGGING_FORMAT,
+                    datefmt="%Y-%m-%dT%H:%M:%S",
+                    level=settings.LOGGING_LEVEL)
 
 logger = wrap_logger(logging.getLogger(__name__))
 
