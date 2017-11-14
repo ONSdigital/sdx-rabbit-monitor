@@ -1,0 +1,9 @@
+applications:
+- name: sdx-rabbit-monitor
+  buildpack: python_buildpack
+  health-check-type: process
+
+  env:
+    CF_DEPLOYMENT: True
+  services:
+    - sdx-rabbit-dev

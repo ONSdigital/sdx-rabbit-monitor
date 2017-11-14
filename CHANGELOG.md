@@ -1,4 +1,5 @@
 ### Unreleased
+- Add Cloudfoundry deployment files
 
 ### 1.3.0 2017-11-01
 - Add config to config file
