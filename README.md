@@ -31,7 +31,8 @@ The endpoint accepts a `GET` request, and is located at:
 
   - `/healthcheck`
 
-
+## Python Version
+The current implementation uses Python 3.4.5 . (It uses the asyncio coroutine syntax not async and await)
 
 ## Configuration
 
