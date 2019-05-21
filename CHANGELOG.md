@@ -1,4 +1,6 @@
 ### Unreleased
+- Remove python 3.4 and 3.5 from travis builds
+- Add python 3.7 to travis builds
 
 ### 1.4.0 2017-11-21
 - Add Cloudfoundry deployment files
