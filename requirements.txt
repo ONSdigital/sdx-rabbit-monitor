@@ -68,3 +68,9 @@ idna==2.8 \
 async-timeout==3.0.1 \
     --hash=sha256:0c3c816a028d47f659d6ff5c745cb2acf1f966da1fe5c19c77a70282b25f4c5f \
     --hash=sha256:4291ca197d287d274d0b6cb5d6f8f8f82d434ed288f962539ff18cc9012f9ea3
+typing-extensions==3.7.4.1 \
+    --hash=sha256:091ecc894d5e908ac75209f10d5b4f118fbdb2eb1ede6a63544054bb1edb41f2 \
+    --hash=sha256:910f4656f54de5993ad9304959ce9bb903f90aadc7c67a0bef07e678014e892d \
+    --hash=sha256:cf8b63fedea4d89bab840ecbb93e75578af28f76f66c35889bd7065f5af88575
+idna_ssl==1.1.0 \
+    --hash=sha256:a933e3bb13da54383f9e8f35dc4f9cb9eb9b3b78c6b36f311254d6d0d92c6c7c
