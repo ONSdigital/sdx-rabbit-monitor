@@ -1,5 +1,6 @@
 ### Unreleased
 - Updated packages
+- removed python 3.4 from travis
 
 ### 1.4.0 2017-11-21
 - Add Cloudfoundry deployment files
