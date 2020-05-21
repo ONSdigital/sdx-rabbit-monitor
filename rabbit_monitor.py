@@ -47,11 +47,9 @@ settings = Settings(port=settings.PORT,
                     stats_incr=settings.RABBIT_MONITOR_STATS_INCREMENT,)
 
 healthcheck_url = settings.rabbit_url + 'healthchecks/node'
-aliveness_url = (settings.rabbit_url +
-                 'aliveness-test/{}'.format(settings.rabbit_default_vhost))
+aliveness_url = (settings.rabbit_url + 'aliveness-test/{}'.format(settings.rabbit_default_vhost))
 
-message_url = (settings.rabbit_url +
-               'overview/')
+message_url = (settings.rabbit_url + 'overview/')
 
 nodes_url = settings.rabbit_url + 'nodes'
 
