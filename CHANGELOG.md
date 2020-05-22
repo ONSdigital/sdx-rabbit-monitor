@@ -1,4 +1,6 @@
 ### Unreleased
+
+### 1.4.1 2020-05-22
 - Updated packages
 - removed python 3.4 from travis
 

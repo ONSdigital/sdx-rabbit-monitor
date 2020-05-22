@@ -16,7 +16,7 @@ import sys
 BYTES_IN_GB = 1073741824
 BYTES_IN_MB = 1048576
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 
 
 logging.basicConfig(format=settings.LOGGING_FORMAT,
