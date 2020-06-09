@@ -1,4 +1,6 @@
 ### Unreleased
+
+### 1.4.2 2020-06-09
 - Remove Cloudfoundry deployment files
 
 ### 1.4.1 2020-05-22
