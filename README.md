@@ -7,19 +7,38 @@
 Data returned is logged to sys.stderr.
 
 ## Installation
+This application presently installs required packages from requirements files:
+- `requirements.txt`: packages for the application, with hashes for all packages: see https://pypi.org/project/hashin/
+- `test-requirements.txt`: packages for testing and linting
 
-To install, use:
+It's also best to use `pyenv` and `pyenv-virtualenv`, to build in a virtual environment with the currently recommended version of Python.  To install these, see:
+- https://github.com/pyenv/pyenv
+- https://github.com/pyenv/pyenv-virtualenv
+- (Note that the homebrew version of `pyenv` is easiest to install, but can lag behind the latest release of Python.)
 
+### Getting started
+Once your virtual environment is set, install the requirements:
+```shell
+$ make build
 ```
-make build
+
+To test, first run `make build` as above, then run:
+```shell
+$ make test
 ```
 
-To run the test suite, use:
-
+It's also possible to install within a container using docker. From the sdx-rabbit-monitor directory:
+```shell
+$ docker build -t sdx-rabbit-monitor .
 ```
-make test
-```
 
+## Usage
+
+Start sdx-rabbit-monitor service using the following command:
+
+```shell
+$ make start
+```
 ## API
 Available endpoints are listed below:
 
