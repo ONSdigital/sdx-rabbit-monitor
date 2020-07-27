@@ -8,6 +8,7 @@ import os
 
 import aiohttp
 from aiohttp import web
+import async_timeout
 from structlog import wrap_logger
 
 import settings
@@ -71,7 +72,7 @@ def check_globals(module):
 
 @asyncio.coroutine
 def fetch(session, url):
-    with aiohttp.Timeout(5):
+    with async_timeout.timeout(5):
         resp = None
         try:
             return (yield from session.get(url,
