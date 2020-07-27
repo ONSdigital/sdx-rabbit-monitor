@@ -49,8 +49,7 @@ def rabbit_aliveness_good(request):
     return web.json_response({'status': 'ok'})
 
 
-@asyncio.coroutine
-def mock_message_count(request):
+async def mock_message_count(request):
     return web.json_response({'queue_totals': {
                               'messages': 10,
                               'messages_ready': 1,
@@ -61,14 +60,13 @@ def mock_message_count(request):
                              status=200)
 
 
-@asyncio.coroutine
-def test_message_counts(cli):
+async def test_message_counts(cli):
     port = cli.server.port
     url = 'http://localhost:{}/test_message_count'.format(port)
     session = aiohttp.ClientSession()
-    resp = yield from message_count(session, url)
+    resp = await message_count(session, url)
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     text = json.loads(text)
     queue_totals = text.get('queue_totals')
     assert 10 == queue_totals.get('messages')
@@ -77,8 +75,7 @@ def test_message_counts(cli):
     assert 1 == queue_totals.get('messages_unacknowledged')
 
 
-@asyncio.coroutine
-def mock_nodes(request):
+async def mock_nodes(request):
     return web.json_response([{"name": "rabbit@76b7837eff57",
                                "mem_limit": 838474137,
                                "disk_free_limit": 50000000,
@@ -87,12 +84,11 @@ def mock_nodes(request):
                              status=200)
 
 
-@asyncio.coroutine
-def test_node_info(cli):
+async def test_node_info(cli):
     port = cli.server.port
     url = 'http://localhost:{}/test_nodes'.format(port)
     session = aiohttp.ClientSession()
-    name, free_disk_space, free_disk_space_limit, percent_disk, memory_used, memory_used_limit, percent_mem = yield from nodes_info(session, url)
+    name, free_disk_space, free_disk_space_limit, percent_disk, memory_used, memory_used_limit, percent_mem = await nodes_info(session, url)
     assert "rabbit@76b7837eff57" == name
     assert 58268864512 == free_disk_space
     assert 77209008 == memory_used
@@ -102,31 +98,28 @@ def test_node_info(cli):
     assert '90.79%' == percent_mem
 
 
-@asyncio.coroutine
-def test_self_healthcheck(cli):
-    resp = yield from cli.get('/healthcheck')
+async def test_self_healthcheck(cli):
+    resp = await cli.get('/healthcheck')
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert text == '{"status": "ok"}'
 
 
-@asyncio.coroutine
-def rabbit_fetch_good(cli):
+async def rabbit_fetch_good(cli):
     port = int(cli.server.port)
     url = 'http://localhost:{}/rabbit_aliveness_good'.format(port)
     session = aiohttp.ClientSession()
-    resp = yield from fetch(session=session, url=url)
+    resp = await fetch(session=session, url=url)
     assert resp.status == 200
-    text = yield from resp.text()
+    text = await resp.text()
     assert text == '{"status": "ok"}'
 
 
-@asyncio.coroutine
-def test_fetch_bad(cli):
+async def test_fetch_bad(cli):
     port = cli.server.port
     url = 'http://localhost:{}/rabbit_aliveness_bad'.format(port)
     session = aiohttp.ClientSession()
-    resp = yield from fetch(session=session, url=url)
+    resp = await fetch(session=session, url=url)
     assert resp.status != 200
 
 

@@ -70,26 +70,24 @@ def check_globals(module):
     return all(g.values())
 
 
-@asyncio.coroutine
-def fetch(session, url):
+async def fetch(session, url):
     with async_timeout.timeout(5):
         resp = None
         try:
-            return (yield from session.get(url,
-                                           params=url_parameters))
+            return (await session.get(url,
+                                      params=url_parameters))
         except Exception as e:
             logger.error(e, status='bad')
             if resp is not None:
-                yield from resp.close()
+                await resp.close()
         finally:
             if resp is not None:
-                yield from resp.release()
+                await resp.release()
 
 
-@asyncio.coroutine
-def aliveness(session):
+async def aliveness(session):
     logger.info('Getting rabbit aliveness status')
-    resp = yield from fetch(session, urls['aliveness'])
+    resp = await fetch(session, urls['aliveness'])
     if resp.status == 200:
         logger.info('Rabbit aliveness ok', status=resp.status)
     else:
@@ -97,10 +95,9 @@ def aliveness(session):
     return resp
 
 
-@asyncio.coroutine
-def healthcheck(session):
+async def healthcheck(session):
     logger.info('Getting rabbit healthcheck status')
-    resp = yield from fetch(session, urls['healthcheck'])
+    resp = await fetch(session, urls['healthcheck'])
     if resp.status == 200:
         logger.info('Rabbit healthcheck ok', status=resp.status)
     else:
@@ -108,16 +105,15 @@ def healthcheck(session):
     return resp
 
 
-@asyncio.coroutine
-def message_count(session, url=None):
+async def message_count(session, url=None):
     logger.info('Getting message counts')
     if url is None:
-        resp = yield from fetch(session, urls['messages'])
+        resp = await fetch(session, urls['messages'])
     else:
-        resp = yield from fetch(session, url)
+        resp = await fetch(session, url)
 
     if resp.status == 200:
-        text = yield from resp.text()
+        text = await resp.text()
         text = json.loads(text)
 
         queue_totals = text.get('queue_totals')
@@ -130,16 +126,15 @@ def message_count(session, url=None):
     return resp
 
 
-@asyncio.coroutine
-def nodes_info(session, url=None):
+async def nodes_info(session, url=None):
     logger.info('Getting rabbit disk space')
     if url is None:
-        resp = yield from fetch(session, urls['nodes'])
+        resp = await fetch(session, urls['nodes'])
     else:
-        resp = yield from fetch(session, url)
+        resp = await fetch(session, url)
 
     if resp.status == 200:
-        nodes = yield from resp.json()
+        nodes = await resp.json()
         for node in nodes:
             name = node['name']
             free_disk_space = node['disk_free']
@@ -185,8 +180,7 @@ def _convert_to_megabytes(mem_in_bytes):
     return mb
 
 
-@asyncio.coroutine
-def monitor_rabbit(app):
+async def monitor_rabbit(app):
     auth = aiohttp.BasicAuth(settings.rabbit_default_user,
                              settings.rabbit_default_pass)
 
@@ -202,25 +196,23 @@ def monitor_rabbit(app):
             ]
             tasks = asyncio.gather(*[task for task in tasks],
                                    return_exceptions=True)
-            yield from asyncio.sleep(settings.wait_time)
+            await asyncio.sleep(settings.wait_time)
     except asyncio.CancelledError:
         logger.info("Stopping rabbit monitoring")
     finally:
-        yield from session.close()
+        await session.close()
 
 
 def start_background_tasks(app):
     app['rabbit_poller'] = app.loop.create_task(monitor_rabbit(app))
 
 
-@asyncio.coroutine
-def cleanup_background_tasks(app):
+async def cleanup_background_tasks(app):
     app['rabbit_poller'].cancel()
-    yield from app['rabbit_poller']
+    await app['rabbit_poller']
 
 
-@asyncio.coroutine
-def self_healthcheck(request):
+async def self_healthcheck(request):
     logger.info('sdx-rabbit-monitor self healthcheck', status=200)
     return web.json_response({'status': 'ok'})
 
